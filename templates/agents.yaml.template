@@ -1,0 +1,70 @@
+# agents.yaml: configuración de los agentes de agent-platform para ESTE proyecto.
+# Copia este archivo a la raíz del repositorio del proyecto como `agents.yaml`.
+#
+# Los workflows de agent-platform solo ejecutan los agentes con `enabled: true`.
+# No pongas aquí secretos, IDs de cuenta ni ARNs: los ARNs de roles van como
+# variables del repositorio (por ejemplo, vars.AWS_ROLE_ARN_INFRA_READONLY).
+
+version: 1
+
+proyecto:
+  nombre: <NOMBRE_PROYECTO>
+  repositorio: <OWNER>/<REPO>
+  python_version: "3.12"
+
+# Personas a quienes escalan los agentes (usuarios de GitHub, con @).
+escalamiento:
+  responsables:
+    - "@<USUARIO_GITHUB>"
+
+aws:
+  region: us-east-1
+  entornos: [staging, production]
+
+iac:
+  herramienta: cdk        # cdk | terraform
+  directorio: infra/
+
+agentes:
+  # 00-orquestador
+  tech-lead:
+    enabled: true
+    dias_estancado: 7
+  onboarding:
+    enabled: true
+
+  # 01-planificacion
+  producto:
+    enabled: true
+  arquitecto:
+    enabled: false
+    pr_grande_lineas: 400
+    pr_grande_archivos: 15
+
+  # 02-construccion
+  desarrollador-python:
+    enabled: false
+    prefijo_rama: ""        # vacío = tipo/descripcion-corta
+  infraestructura:
+    enabled: false
+  cicd:
+    enabled: false
+
+  # 03-validacion
+  qa:
+    enabled: false
+    coverage_min: 80
+  revisor:
+    enabled: true
+  seguridad:
+    enabled: false
+
+  # 04-operacion
+  observabilidad:
+    enabled: false
+  costos:
+    enabled: false
+    presupuesto_mensual_usd: 100
+    umbral_alerta_pct: 80
+  documentacion:
+    enabled: true

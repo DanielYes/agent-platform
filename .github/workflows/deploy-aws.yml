@@ -1,0 +1,109 @@
+# Despliegue a AWS con OIDC (sin access keys): staging y luego producción.
+# Producción requiere aprobación manual: configura "Required reviewers" en el
+# environment `production` del repositorio que llama.
+#
+# Uso desde un proyecto:
+#   jobs:
+#     deploy:
+#       uses: DanielYes/agent-platform/.github/workflows/deploy-aws.yml@v0.1.0
+#       permissions:
+#         id-token: write
+#         contents: read
+#       with:
+#         aws-region: us-east-1
+#         role-arn-staging: ${{ vars.AWS_ROLE_ARN_STAGING }}
+#         role-arn-prod: ${{ vars.AWS_ROLE_ARN_PROD }}
+name: deploy-aws
+
+on:
+  workflow_call:
+    inputs:
+      aws-region:
+        description: Región de AWS.
+        type: string
+        required: true
+      role-arn-staging:
+        description: ARN del rol cicd-deployer en la cuenta de staging.
+        type: string
+        required: true
+      role-arn-prod:
+        description: ARN del rol cicd-deployer en la cuenta de producción.
+        type: string
+        required: true
+      deploy-command:
+        description: Comando de despliegue. Recibe DEPLOY_ENV=staging|production.
+        type: string
+        default: npx --yes aws-cdk@2 deploy --all --require-approval never -c env=$DEPLOY_ENV
+      working-directory:
+        description: Directorio donde se ejecuta el despliegue.
+        type: string
+        default: infra
+      python-version:
+        description: Versión de Python.
+        type: string
+        default: "3.12"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-aws-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: staging
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ inputs.python-version }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Instalar dependencias de IaC
+        run: if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ inputs.role-arn-staging }}
+          aws-region: ${{ inputs.aws-region }}
+          role-session-name: gha-deploy-staging-${{ github.run_id }}
+      - name: Desplegar en staging
+        env:
+          DEPLOY_ENV: staging
+        run: ${{ inputs.deploy-command }}
+
+  production:
+    needs: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # La aprobación manual se aplica con las reglas de protección de este environment.
+    environment: production
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ inputs.python-version }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Instalar dependencias de IaC
+        run: if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ inputs.role-arn-prod }}
+          aws-region: ${{ inputs.aws-region }}
+          role-session-name: gha-deploy-prod-${{ github.run_id }}
+      - name: Desplegar en producción
+        env:
+          DEPLOY_ENV: production
+        run: ${{ inputs.deploy-command }}

@@ -1,0 +1,67 @@
+# Escaneo de seguridad: bandit (código), pip-audit (dependencias) y trufflehog (secretos).
+#
+# Uso desde un proyecto:
+#   jobs:
+#     seguridad:
+#       uses: DanielYes/agent-platform/.github/workflows/security-scan.yml@v0.1.0
+name: security-scan
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Versión de Python.
+        type: string
+        default: "3.12"
+      source-path:
+        description: Directorio que analiza bandit.
+        type: string
+        default: "."
+
+permissions:
+  contents: read
+
+jobs:
+  bandit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ inputs.python-version }}
+      - run: pip install bandit
+      - name: bandit
+        env:
+          SOURCE_PATH: ${{ inputs.source-path }}
+        run: bandit -r "$SOURCE_PATH" -x ./tests,./.venv,./cdk.out -ll
+
+  pip-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ inputs.python-version }}
+      - run: pip install pip-audit
+      - name: pip-audit
+        run: |
+          found=0
+          for f in requirements.txt requirements-dev.txt; do
+            if [ -f "$f" ]; then pip-audit -r "$f"; found=1; fi
+          done
+          if [ -f pyproject.toml ]; then pip-audit .; found=1; fi
+          if [ "$found" -eq 0 ]; then echo "No se encontraron dependencias que auditar."; fi
+
+  secretos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: trufflehog
+        uses: trufflesecurity/trufflehog@v3.100.1
+        with:
+          extra_args: --results=verified,unknown

@@ -1,0 +1,49 @@
+# AGENTS.md
+
+Alcance: lo que cualquier agente (humano o IA) necesita para trabajar en el código de este proyecto.
+Fuera de alcance: visión de producto (`docs/producto.md`), arquitectura (`docs/arquitectura.md`, `docs/adr/`),
+seguridad (`docs/seguridad.md`) y operación (`docs/runbooks/`).
+
+> Generado como borrador por el agente `onboarding` de agent-platform. Reemplaza cada `TODO(humano):`.
+
+## Qué es este proyecto
+
+TODO(humano): una o dos frases sobre qué hace y para quién.
+
+## Comandos
+
+```bash
+# Instalar
+TODO(humano): p. ej. python -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"
+
+# Lint
+TODO(humano): p. ej. ruff check .
+
+# Tests
+TODO(humano): p. ej. pytest --cov
+
+# Tests de integración (LocalStack)
+TODO(humano): p. ej. docker compose up -d localstack && pytest -m integration
+```
+
+## Estructura
+
+Solo lo que no es obvio al mirar el árbol de carpetas.
+
+- TODO(humano): p. ej. `src/<paquete>/handlers/`: una Lambda por archivo; la lógica va en `services/`.
+
+## Convenciones
+
+- Python TODO(humano): versión. Tipado en funciones públicas.
+- Commits: Conventional Commits (`tipo(alcance): descripción`).
+- Ramas: `tipo/descripcion-corta`. Nunca se trabaja en `main`.
+- Tests: `tests/unit/` con `moto` para AWS; `tests/integration/` con LocalStack.
+- TODO(humano): otras convenciones propias del proyecto.
+
+## Trampas conocidas
+
+- TODO(humano): p. ej. "La variable X debe existir aunque esté vacía o el import falla".
+
+## Lo que los agentes no deben tocar sin un humano
+
+- TODO(humano): p. ej. migraciones de datos, `infra/prod/`, configuración de facturación.

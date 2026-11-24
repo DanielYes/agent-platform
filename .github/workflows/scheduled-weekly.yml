@@ -1,0 +1,192 @@
+# Revisión semanal: `tech-lead` (issues), `observabilidad` (CloudWatch), `costos` (gasto)
+# y `seguridad` (dependencias e IAM). Los agentes con AWS solo corren si se pasa su rol.
+#
+# Uso desde un proyecto:
+#   on:
+#     schedule:
+#       - cron: "0 12 * * 1"
+#     workflow_dispatch:
+#   jobs:
+#     agentes:
+#       uses: DanielYes/agent-platform/.github/workflows/scheduled-weekly.yml@v0.1.0
+#       permissions:
+#         contents: read
+#         issues: write
+#         id-token: write
+#       with:
+#         aws-region: us-east-1
+#         role-arn-observabilidad: ${{ vars.AWS_ROLE_ARN_OBSERVABILIDAD }}
+#         role-arn-costos: ${{ vars.AWS_ROLE_ARN_COSTOS }}
+#         role-arn-seguridad: ${{ vars.AWS_ROLE_ARN_SEGURIDAD }}
+#       secrets:
+#         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+name: scheduled-weekly
+
+on:
+  workflow_call:
+    inputs:
+      platform-ref:
+        description: Versión (tag) de agent-platform de la que se cargan los agentes.
+        type: string
+        default: v0.1.0
+      aws-region:
+        description: Región de AWS.
+        type: string
+        default: us-east-1
+      role-arn-observabilidad:
+        description: ARN del rol observabilidad-logs. Vacío = se omite el agente.
+        type: string
+        default: ""
+      role-arn-costos:
+        description: ARN del rol costos-billing. Vacío = se omite el agente.
+        type: string
+        default: ""
+      role-arn-seguridad:
+        description: ARN del rol seguridad-audit. Vacío = solo se auditan dependencias.
+        type: string
+        default: ""
+      python-version:
+        description: Versión de Python.
+        type: string
+        default: "3.12"
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+env:
+  ISSUE_TOOLS: "Read,Grep,Glob,Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh label list:*)"
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      tech_lead: ${{ steps.cfg.outputs.tech_lead }}
+      observabilidad: ${{ steps.cfg.outputs.observabilidad }}
+      costos: ${{ steps.cfg.outputs.costos }}
+      seguridad: ${{ steps.cfg.outputs.seguridad }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: agents.yaml
+          sparse-checkout-cone-mode: false
+      - id: cfg
+        name: Leer agentes habilitados en agents.yaml
+        run: |
+          for a in tech-lead observabilidad costos seguridad; do
+            v=false
+            if [ -f agents.yaml ]; then v=$(yq ".agentes.\"$a\".enabled // false" agents.yaml); fi
+            echo "${a//-/_}=$v" >> "$GITHUB_OUTPUT"
+          done
+
+  tech-lead:
+    needs: gate
+    if: needs.gate.outputs.tech_lead == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          plugin_marketplaces: https://github.com/DanielYes/agent-platform.git#${{ inputs.platform-ref }}
+          plugins: agent-platform@agent-platform
+          prompt: |
+            REPO: ${{ github.repository }}
+            Revisión semanal: revisa los issues abiertos, detecta los estancados (más de 7 días sin avance)
+            o sin asignar, asígnalos a agentes habilitados y escala lo que corresponda.
+          claude_args: |
+            --agent agent-platform:tech-lead
+            --max-turns 30
+            --permission-mode default
+            --allowedTools "${{ env.ISSUE_TOOLS }},Bash(gh issue edit:*)"
+
+  observabilidad:
+    needs: gate
+    if: needs.gate.outputs.observabilidad == 'true' && inputs.role-arn-observabilidad != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ inputs.role-arn-observabilidad }}
+          aws-region: ${{ inputs.aws-region }}
+          role-session-name: gha-observabilidad-${{ github.run_id }}
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          plugin_marketplaces: https://github.com/DanielYes/agent-platform.git#${{ inputs.platform-ref }}
+          plugins: agent-platform@agent-platform
+          prompt: |
+            REPO: ${{ github.repository }}
+            Revisión semanal: analiza las alarmas de CloudWatch y los errores en logs de los últimos 7 días
+            usando `docs/runbooks/`, y abre o actualiza issues con diagnóstico.
+          claude_args: |
+            --agent agent-platform:observabilidad
+            --max-turns 40
+            --permission-mode default
+            --allowedTools "${{ env.ISSUE_TOOLS }},Bash(git log:*),Bash(aws cloudwatch describe-alarms:*),Bash(aws cloudwatch describe-alarm-history:*),Bash(aws cloudwatch get-metric-data:*),Bash(aws cloudwatch get-metric-statistics:*),Bash(aws cloudwatch list-metrics:*),Bash(aws logs describe-log-groups:*),Bash(aws logs filter-log-events:*),Bash(aws logs start-query:*),Bash(aws logs get-query-results:*)"
+
+  costos:
+    needs: gate
+    if: needs.gate.outputs.costos == 'true' && inputs.role-arn-costos != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ inputs.role-arn-costos }}
+          # Cost Explorer y Budgets son globales y responden en us-east-1.
+          aws-region: us-east-1
+          role-session-name: gha-costos-${{ github.run_id }}
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          plugin_marketplaces: https://github.com/DanielYes/agent-platform.git#${{ inputs.platform-ref }}
+          plugins: agent-platform@agent-platform
+          prompt: |
+            REPO: ${{ github.repository }}
+            Revisión semanal: reporta el gasto del mes, el pronóstico al cierre y los servicios con mayor
+            variación frente al presupuesto de `agents.yaml`. Abre un issue si supera el umbral.
+          claude_args: |
+            --agent agent-platform:costos
+            --max-turns 30
+            --permission-mode default
+            --allowedTools "${{ env.ISSUE_TOOLS }},Bash(aws ce get-cost-and-usage:*),Bash(aws ce get-cost-forecast:*),Bash(aws ce get-dimension-values:*),Bash(aws budgets describe-budgets:*),Bash(aws pricing get-products:*)"
+
+  seguridad:
+    needs: gate
+    if: needs.gate.outputs.seguridad == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ inputs.python-version }}
+      - uses: aws-actions/configure-aws-credentials@v6
+        if: inputs.role-arn-seguridad != ''
+        with:
+          role-to-assume: ${{ inputs.role-arn-seguridad }}
+          aws-region: ${{ inputs.aws-region }}
+          role-session-name: gha-seguridad-${{ github.run_id }}
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          plugin_marketplaces: https://github.com/DanielYes/agent-platform.git#${{ inputs.platform-ref }}
+          plugins: agent-platform@agent-platform
+          prompt: |
+            REPO: ${{ github.repository }}
+            Revisión semanal: audita dependencias (pip-audit), código (bandit) y, si hay credenciales de AWS,
+            las políticas IAM de la cuenta. Abre issues con los hallazgos nuevos; no publiques valores de secretos.
+          claude_args: |
+            --agent agent-platform:seguridad
+            --max-turns 40
+            --permission-mode default
+            --allowedTools "${{ env.ISSUE_TOOLS }},Bash(pip install bandit pip-audit:*),Bash(bandit:*),Bash(pip-audit:*),Bash(aws iam list-roles:*),Bash(aws iam list-policies:*),Bash(aws iam list-attached-role-policies:*),Bash(aws iam list-role-policies:*),Bash(aws iam get-role:*),Bash(aws iam get-role-policy:*),Bash(aws iam get-policy-version:*),Bash(aws iam get-account-authorization-details:*),Bash(aws accessanalyzer list-findings:*)"

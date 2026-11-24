@@ -1,0 +1,28 @@
+{
+  "name": "agent-platform",
+  "version": "0.1.0",
+  "description": "Plataforma de agentes de desarrollo genéricos para proyectos en GitHub, Python y AWS. El contexto de cada proyecto vive en su propio repositorio.",
+  "author": {
+    "name": "DanielYes",
+    "url": "https://github.com/DanielYes"
+  },
+  "homepage": "https://github.com/DanielYes/agent-platform",
+  "repository": "https://github.com/DanielYes/agent-platform",
+  "license": "MIT",
+  "keywords": ["agentes", "subagents", "python", "aws", "github-actions"],
+  "agents": [
+    "./agents/00-orquestador/tech-lead.md",
+    "./agents/00-orquestador/onboarding.md",
+    "./agents/01-planificacion/producto.md",
+    "./agents/01-planificacion/arquitecto.md",
+    "./agents/02-construccion/desarrollador-python.md",
+    "./agents/02-construccion/infraestructura.md",
+    "./agents/02-construccion/cicd.md",
+    "./agents/03-validacion/qa.md",
+    "./agents/03-validacion/revisor.md",
+    "./agents/03-validacion/seguridad.md",
+    "./agents/04-operacion/observabilidad.md",
+    "./agents/04-operacion/costos.md",
+    "./agents/04-operacion/documentacion.md"
+  ]
+}

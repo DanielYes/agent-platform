@@ -1,0 +1,76 @@
+# Agente tras cada merge a main: `documentacion` actualiza docs/, README y CHANGELOG vía PR.
+#
+# Uso desde un proyecto:
+#   on:
+#     push:
+#       branches: [main]
+#   jobs:
+#     agentes:
+#       uses: DanielYes/agent-platform/.github/workflows/on-merge-main.yml@v0.1.0
+#       permissions:
+#         contents: write
+#         pull-requests: write
+#         id-token: write
+#       secrets:
+#         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+name: on-merge-main
+
+on:
+  workflow_call:
+    inputs:
+      platform-ref:
+        description: Versión (tag) de agent-platform de la que se cargan los agentes.
+        type: string
+        default: v0.1.0
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  gate:
+    # Evita un ciclo: los merges de PRs de documentación no vuelven a disparar al agente.
+    if: ${{ !startsWith(github.event.head_commit.message, 'docs') }}
+    runs-on: ubuntu-latest
+    outputs:
+      documentacion: ${{ steps.cfg.outputs.documentacion }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: agents.yaml
+          sparse-checkout-cone-mode: false
+      - id: cfg
+        name: Leer agentes habilitados en agents.yaml
+        run: |
+          v=false
+          if [ -f agents.yaml ]; then v=$(yq '.agentes.documentacion.enabled // false' agents.yaml); fi
+          echo "documentacion=$v" >> "$GITHUB_OUTPUT"
+
+  documentacion:
+    needs: gate
+    if: needs.gate.outputs.documentacion == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 50
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          plugin_marketplaces: https://github.com/DanielYes/agent-platform.git#${{ inputs.platform-ref }}
+          plugins: agent-platform@agent-platform
+          prompt: |
+            REPO: ${{ github.repository }}
+            RANGO: ${{ github.event.before }}..${{ github.sha }}
+            Revisa los commits de este rango y actualiza CHANGELOG.md ([Unreleased]), README.md y docs/ según tu rol.
+            Trabaja en una rama `docs/actualizacion-${{ github.run_id }}` y abre un PR. Si no hay nada que actualizar, no abras PR.
+          claude_args: |
+            --agent agent-platform:documentacion
+            --max-turns 25
+            --permission-mode default
+            --allowedTools "Read,Grep,Glob,Edit,Write,Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(git switch:*),Bash(git checkout -b:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh pr create:*),Bash(gh pr list:*)"

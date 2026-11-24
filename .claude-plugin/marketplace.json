@@ -1,0 +1,17 @@
+{
+  "name": "agent-platform",
+  "description": "Marketplace de la plataforma central de agentes de desarrollo.",
+  "owner": {
+    "name": "DanielYes",
+    "url": "https://github.com/DanielYes"
+  },
+  "plugins": [
+    {
+      "name": "agent-platform",
+      "source": "./",
+      "description": "13 subagentes genéricos (orquestación, planificación, construcción, validación y operación) para proyectos en GitHub, Python y AWS.",
+      "version": "0.1.0",
+      "category": "development"
+    }
+  ]
+}

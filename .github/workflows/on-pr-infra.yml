@@ -1,0 +1,159 @@
+# Agentes en PRs que tocan IaC: se ejecuta `cdk diff` o `terraform plan` con el rol
+# de solo lectura `infra-readonly`; `infraestructura` lo explica y `costos` estima el impacto.
+# Nunca se ejecuta apply ni deploy.
+#
+# Uso desde un proyecto:
+#   on:
+#     pull_request:
+#       paths: ["infra/**"]
+#   jobs:
+#     agentes-infra:
+#       uses: DanielYes/agent-platform/.github/workflows/on-pr-infra.yml@v0.1.0
+#       permissions:
+#         contents: read
+#         pull-requests: write
+#         id-token: write
+#       with:
+#         aws-region: us-east-1
+#         role-arn: ${{ vars.AWS_ROLE_ARN_INFRA_READONLY }}
+#         iac-tool: cdk
+#       secrets:
+#         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+name: on-pr-infra
+
+on:
+  workflow_call:
+    inputs:
+      platform-ref:
+        description: Versión (tag) de agent-platform de la que se cargan los agentes.
+        type: string
+        default: v0.1.0
+      aws-region:
+        description: Región de AWS.
+        type: string
+        required: true
+      role-arn:
+        description: ARN del rol infra-readonly.
+        type: string
+        required: true
+      iac-tool:
+        description: "Herramienta de IaC: cdk o terraform."
+        type: string
+        default: cdk
+      working-directory:
+        description: Directorio de la IaC.
+        type: string
+        default: infra
+      python-version:
+        description: Versión de Python.
+        type: string
+        default: "3.12"
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  gate:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      infraestructura: ${{ steps.cfg.outputs.infraestructura }}
+      costos: ${{ steps.cfg.outputs.costos }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: agents.yaml
+          sparse-checkout-cone-mode: false
+      - id: cfg
+        name: Leer agentes habilitados en agents.yaml
+        run: |
+          for a in infraestructura costos; do
+            v=false
+            if [ -f agents.yaml ]; then v=$(yq ".agentes.\"$a\".enabled // false" agents.yaml); fi
+            echo "$a=$v" >> "$GITHUB_OUTPUT"
+          done
+
+  plan:
+    needs: gate
+    if: needs.gate.outputs.infraestructura == 'true' || needs.gate.outputs.costos == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - uses: actions/setup-node@v7
+        if: inputs.iac-tool == 'cdk'
+        with:
+          node-version: "24"
+
+      - uses: hashicorp/setup-terraform@v4
+        if: inputs.iac-tool == 'terraform'
+        with:
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ inputs.role-arn }}
+          aws-region: ${{ inputs.aws-region }}
+          role-session-name: gha-infra-plan-${{ github.run_id }}
+
+      - name: Generar diff/plan (solo lectura)
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          IAC_TOOL: ${{ inputs.iac-tool }}
+        run: |
+          set -o pipefail
+          out="$GITHUB_WORKSPACE/iac-plan.txt"
+          if [ "$IAC_TOOL" = "terraform" ]; then
+            terraform init -input=false -no-color 2>&1 | tee "$out"
+            terraform validate -no-color 2>&1 | tee -a "$out"
+            terraform plan -input=false -lock=false -no-color 2>&1 | tee -a "$out" || true
+          else
+            if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+            npx --yes aws-cdk@2 diff --no-color 2>&1 | tee "$out" || true
+          fi
+
+      - name: infraestructura explica el diff
+        if: needs.gate.outputs.infraestructura == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          plugin_marketplaces: https://github.com/DanielYes/agent-platform.git#${{ inputs.platform-ref }}
+          plugins: agent-platform@agent-platform
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR: ${{ github.event.pull_request.number }}
+            La salida de `${{ inputs.iac-tool }}` está en `iac-plan.txt`. Analízala según tu rol y comenta
+            en el PR: recursos creados, modificados, reemplazados y destruidos, y riesgos. No ejecutes nada en AWS.
+          claude_args: |
+            --agent agent-platform:infraestructura
+            --max-turns 20
+            --permission-mode default
+            --allowedTools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
+
+      - name: costos estima el impacto
+        if: needs.gate.outputs.costos == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          plugin_marketplaces: https://github.com/DanielYes/agent-platform.git#${{ inputs.platform-ref }}
+          plugins: agent-platform@agent-platform
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR: ${{ github.event.pull_request.number }}
+            La salida de `${{ inputs.iac-tool }}` está en `iac-plan.txt`. Estima el impacto mensual en costos
+            de los recursos nuevos o modificados (rango y supuestos) y compáralo con el presupuesto de `agents.yaml`.
+          claude_args: |
+            --agent agent-platform:costos
+            --max-turns 20
+            --permission-mode default
+            --allowedTools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr comment:*)"
