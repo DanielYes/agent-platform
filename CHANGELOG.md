@@ -5,6 +5,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Changed
+
+- README: columna "Para qué sirve" en la tabla de agentes.
+
 ## [0.1.0] - 2026-11-24
 
 ### Added

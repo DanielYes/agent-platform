@@ -15,21 +15,21 @@ Incluye:
 
 Cada agente define su propósito, cuándo se activa, qué contexto del proyecto lee, qué puede y qué no puede hacer, y cuándo escala a un humano. Están en `agents/`, agrupados por fase (la fase también aparece en el cuerpo de cada agente). Al instalarse se llaman `agent-platform:<nombre>`.
 
-| Fase | Agente | Lee del proyecto | Permisos clave |
-|---|---|---|---|
-| 00-orquestador | `tech-lead` | `agents.yaml`, issues abiertos | Asigna issues y escala; no escribe código |
-| 00-orquestador | `onboarding` | todo el repo | Genera borradores de `AGENTS.md`, `agents.yaml` y `docs/` vía PR |
-| 01-planificacion | `producto` | `docs/producto.md` | Crea y refina issues con criterios de aceptación; no toca código |
-| 01-planificacion | `arquitecto` | `docs/arquitectura.md`, `docs/adr/` | Escribe ADRs y revisa PRs grandes |
-| 02-construccion | `desarrollador-python` | `AGENTS.md` | Trabaja en ramas; nunca en `main` |
-| 02-construccion | `infraestructura` | `infra/`, `agents.yaml` | CDK en Python o Terraform; solo plan/diff, nunca apply |
-| 02-construccion | `cicd` | `agents.yaml` | Mantiene workflows; producción solo con aprobación manual |
-| 03-validacion | `qa` | `AGENTS.md` | Tests con pytest, moto y LocalStack; reporta cobertura |
-| 03-validacion | `revisor` | `AGENTS.md`, `docs/adr/` | Comenta PRs; nunca aprueba ni hace merge |
-| 03-validacion | `seguridad` | `docs/seguridad.md` | bandit, pip-audit, detección de secretos, revisión de IAM |
-| 04-operacion | `observabilidad` | `docs/runbooks/` | Analiza logs y alarmas de CloudWatch; abre issues con diagnóstico |
-| 04-operacion | `costos` | `agents.yaml` (presupuesto) | Revisa costos y estima el impacto de cambios de infra |
-| 04-operacion | `documentacion` | `docs/`, `README` | Actualiza docs y changelog tras cada merge |
+| Fase | Agente | Para qué sirve | Lee del proyecto | Permisos clave |
+|---|---|---|---|---|
+| 00-orquestador | `tech-lead` | Clasifica los issues abiertos y decide qué agente atiende cada uno | `agents.yaml`, issues abiertos | Asigna issues y escala; no escribe código |
+| 00-orquestador | `onboarding` | Prepara un proyecto nuevo para usar la plataforma (se usa una vez) | todo el repo | Genera borradores de `AGENTS.md`, `agents.yaml` y `docs/` vía PR |
+| 01-planificacion | `producto` | Convierte ideas en issues claros, con historias de usuario y criterios de aceptación | `docs/producto.md` | Crea y refina issues con criterios de aceptación; no toca código |
+| 01-planificacion | `arquitecto` | Toma y documenta decisiones técnicas, y evalúa alternativas | `docs/arquitectura.md`, `docs/adr/` | Escribe ADRs y revisa PRs grandes |
+| 02-construccion | `desarrollador-python` | Implementa features y fixes a partir de issues refinados | `AGENTS.md` | Trabaja en ramas; nunca en `main` |
+| 02-construccion | `infraestructura` | Propone cambios de IaC y explica el impacto de cada `diff`/`plan` | `infra/`, `agents.yaml` | CDK en Python o Terraform; solo plan/diff, nunca apply |
+| 02-construccion | `cicd` | Mantiene los pipelines de GitHub Actions y diagnostica sus fallos | `agents.yaml` | Mantiene workflows; producción solo con aprobación manual |
+| 03-validacion | `qa` | Escribe tests, verifica criterios de aceptación y reporta la cobertura | `AGENTS.md` | Tests con pytest, moto y LocalStack; reporta cobertura |
+| 03-validacion | `revisor` | Revisa PRs: corrección, claridad, convenciones y ADRs | `AGENTS.md`, `docs/adr/` | Comenta PRs; nunca aprueba ni hace merge |
+| 03-validacion | `seguridad` | Detecta vulnerabilidades, secretos expuestos y permisos IAM excesivos | `docs/seguridad.md` | bandit, pip-audit, detección de secretos, revisión de IAM |
+| 04-operacion | `observabilidad` | Diagnostica errores en producción a partir de logs y alarmas | `docs/runbooks/` | Analiza logs y alarmas de CloudWatch; abre issues con diagnóstico |
+| 04-operacion | `costos` | Controla el gasto de AWS frente al presupuesto y estima el costo de cada cambio | `agents.yaml` (presupuesto) | Revisa costos y estima el impacto de cambios de infra |
+| 04-operacion | `documentacion` | Mantiene la documentación al día después de cada merge | `docs/`, `README` | Actualiza docs y changelog tras cada merge |
 
 ## Instalar el plugin en un proyecto
 
