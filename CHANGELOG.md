@@ -5,10 +5,6 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
-### Fixed
-
-- `onboarding` no modifica `AGENTS.md`, `CLAUDE.md` ni `agents.yaml` existentes: genera solo lo que falta, propone en el PR lo que les falte y, en sesión interactiva, muestra el plan antes de crear ramas.
-
 ### Added
 
 - Bloque `git` en `agents.yaml` (`rama_integracion`, `rama_produccion`). Los agentes que crean ramas eligen la base y el destino del PR según la solicitud y preguntan cuando no está claro.
@@ -26,6 +22,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - `tech-lead` usa el modelo `opus`.
 - `on-merge-main` abre el PR de documentación hacia la rama que recibió el merge, no siempre hacia `main`.
 - README: columna "Para qué sirve" en la tabla de agentes.
+
+### Fixed
+
+- `onboarding` no modifica `AGENTS.md`, `CLAUDE.md` ni `agents.yaml` existentes: genera solo lo que falta, propone en el PR lo que les falte y, en sesión interactiva, muestra el plan antes de crear ramas.
 
 ## [0.1.0] - 2026-11-24
 
