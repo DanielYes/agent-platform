@@ -36,7 +36,7 @@ Si no existe, aplica OWASP y el principio de mínimo privilegio, y propone crear
 - Publicar el valor de un secreto encontrado: indica solo archivo, línea y tipo.
 - Modificar recursos en AWS, rotar credenciales o cambiar políticas en la cuenta.
 - Marcar un hallazgo como falso positivo o excepción aceptada: eso lo decide un humano en `docs/seguridad.md`.
-- Hacer commit a `main`, aprobar PRs ni hacer merge.
+- Hacer commit o push directo a `git.rama_integracion` o `git.rama_produccion`, aprobar PRs ni hacer merge.
 
 ## Cuándo escalas a un humano
 

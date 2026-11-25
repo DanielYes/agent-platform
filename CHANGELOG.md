@@ -5,8 +5,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Added
+
+- Bloque `git` en `agents.yaml` (`rama_integracion`, `rama_produccion`). Los agentes que crean ramas eligen la base y el destino del PR según la solicitud y preguntan cuando no está claro.
+- `onboarding` detecta el modelo de ramas del repositorio y `revisor` señala PRs con una rama destino incorrecta.
+
 ### Changed
 
+- `on-merge-main` abre el PR de documentación hacia la rama que recibió el merge, no siempre hacia `main`.
 - README: columna "Para qué sirve" en la tabla de agentes.
 
 ## [0.1.0] - 2026-11-24

@@ -100,7 +100,7 @@ La API key llega como secret del repositorio que llama; nunca se escribe en un a
 | `on-issue-opened.yml` | `issues: [opened]` | `producto` → `tech-lead` | `contents: read`, `issues: write`, `id-token: write` |
 | `on-pr-opened.yml` | `pull_request: [opened, synchronize, ready_for_review, reopened]` | `revisor`, `qa`, `seguridad`, `arquitecto` (solo PRs grandes) | `contents: read`, `pull-requests: write`, `issues: read`, `id-token: write` |
 | `on-pr-infra.yml` | `pull_request` con `paths: ["infra/**"]` | `infraestructura`, `costos` | `contents: read`, `pull-requests: write`, `id-token: write` |
-| `on-merge-main.yml` | `push` a `main` | `documentacion` | `contents: write`, `pull-requests: write`, `id-token: write` |
+| `on-merge-main.yml` | `push` a la rama de integración (`git.rama_integracion`) | `documentacion` | `contents: write`, `pull-requests: write`, `id-token: write` |
 | `scheduled-weekly.yml` | `schedule` + `workflow_dispatch` | `tech-lead`, `observabilidad`, `costos`, `seguridad` | `contents: read`, `issues: write`, `id-token: write` |
 
 Ejemplo:
@@ -131,7 +131,7 @@ Cada workflow trae en su cabecera un ejemplo de uso completo. Los ARNs de los ro
 1. **Plantillas.** Copia `templates/agents.yaml.template` a `agents.yaml` y `templates/AGENTS.md.template` a `AGENTS.md` en la raíz del proyecto (o deja que el paso 3 los genere).
 2. **IaC de OIDC.** Despliega `iac/` en cada cuenta de AWS del proyecto con sus repositorios como parámetros (ver [`iac/README.md`](iac/README.md)) y guarda los ARNs de salida como variables del repositorio.
 3. **Onboarding.** Instala el plugin y ejecuta `claude --agent agent-platform:onboarding`. El agente escanea el repositorio y abre un PR con borradores de `AGENTS.md`, `agents.yaml` y `docs/`.
-4. **Revisión humana.** Revisa el PR, resuelve cada `TODO(humano):`, corrige lo que el agente dedujo mal y haz merge.
+4. **Revisión humana.** Revisa el PR, resuelve cada `TODO(humano):` (incluido el modelo de ramas del bloque `git`), corrige lo que el agente dedujo mal y haz merge.
 5. **Activar agentes.** Agrega los workflows que necesites en `.github/workflows/` del proyecto, crea el secret `ANTHROPIC_API_KEY` y cambia a `enabled: true` en `agents.yaml` los agentes que quieras activar, empezando por los de solo lectura.
 
 ## Qué nunca va en este repo
