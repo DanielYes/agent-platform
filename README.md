@@ -10,6 +10,7 @@ Incluye:
 - **Workflows reutilizables** de GitHub Actions: CI de Python, escaneo de seguridad, despliegue a AWS con OIDC y workflows que disparan a los agentes.
 - **IaC (CDK en Python)** para el proveedor OIDC de GitHub y un rol de mínimo privilegio por agente.
 - **Plantillas** de `AGENTS.md` y `agents.yaml` para cada proyecto.
+- **Fábrica de agentes** ([`fabrica/`](fabrica/README.md)): vista 3D en vivo de qué agente está trabajando, en qué proyecto y en qué máquina, más los issues, PRs y runs de los repos. Corre en un equipo de la red local; el hook que la alimenta viene con el plugin y está inactivo hasta que configuras `FABRICA_URL`.
 
 ## Agentes
 

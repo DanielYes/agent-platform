@@ -5,3 +5,5 @@ __pycache__/
 .env.*
 cdk.out/
 .DS_Store
+fabrica/*.db
+fabrica/*.db-journal

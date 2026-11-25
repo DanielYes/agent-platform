@@ -7,6 +7,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### Added
 
+- Fábrica de agentes (`fabrica/`): servidor local sin dependencias y página 3D en vivo con agentes activos por máquina y proyecto, issues, PRs y runs de GitHub.
+- Hook del plugin (`hooks/`) que reporta a la fábrica el inicio y fin de cada agente con una descripción corta. Inactivo si `FABRICA_URL` no está definida.
 - Bloque `git` en `agents.yaml` (`rama_integracion`, `rama_produccion`). Los agentes que crean ramas eligen la base y el destino del PR según la solicitud y preguntan cuando no está claro.
 - Agentes `desarrollador-frontend` y `github` (estado de repos, ramas, commits y PRs con orden explícita).
 - `tech-lead` funciona también como líder de sesión (`claude --agent agent-platform:tech-lead`): planea, delega, exige el contrato de API y consolida.

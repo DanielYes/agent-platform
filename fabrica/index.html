@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fábrica de agentes</title>
+<style>
+  :root {
+    --fondo: #0f1216; --panel: #171b21; --borde: #2a303a; --texto: #e6e9ee; --suave: #8b94a3;
+    --acento: #4f9cf9; --ok: #3fb950; --mal: #f85149; --aviso: #d29922;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--fondo); color: var(--texto);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  #escena { position: fixed; inset: 0; }
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100vw); background: var(--panel);
+    border-left: 1px solid var(--borde); overflow-y: auto; padding: 16px; }
+  #panel.oculto { transform: translateX(100%); }
+  #alternar { position: fixed; top: 12px; right: calc(min(380px, 100vw) + 12px); z-index: 2;
+    background: var(--panel); color: var(--texto); border: 1px solid var(--borde); border-radius: 6px;
+    padding: 6px 10px; cursor: pointer; }
+  #panel.oculto + #alternar { right: 12px; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--suave); margin: 20px 0 8px; }
+  .meta { color: var(--suave); font-size: 12px; }
+  .estado-conexion::before { content: "●"; margin-right: 6px; color: var(--ok); }
+  .estado-conexion.caida::before { color: var(--mal); }
+  .filtros { display: flex; gap: 8px; margin-top: 12px; }
+  select { flex: 1; min-width: 0; background: var(--fondo); color: var(--texto); border: 1px solid var(--borde);
+    border-radius: 6px; padding: 6px; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li.item { border: 1px solid var(--borde); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+  li.item.clic { cursor: pointer; }
+  li.item.clic:hover { border-color: var(--acento); }
+  .fila { display: flex; justify-content: space-between; gap: 8px; }
+  .agente { font-weight: 600; }
+  .chip { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 10px; background: var(--borde); color: var(--texto); margin-right: 4px; }
+  .punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  a { color: var(--acento); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  #seleccion:empty { display: none; }
+  #seleccion { border: 1px solid var(--acento); border-radius: 8px; padding: 10px; margin-top: 12px; }
+  .vacio { color: var(--suave); font-style: italic; }
+  .ok { color: var(--ok); } .mal { color: var(--mal); } .aviso { color: var(--aviso); }
+  @media (max-width: 700px) { #panel { width: 100vw; height: 55vh; top: auto; border-left: 0; border-top: 1px solid var(--borde); }
+    #panel.oculto { transform: translateY(100%); } #alternar, #panel.oculto + #alternar { right: 12px; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="escena"></div>
+<aside id="panel">
+  <h1>Fábrica de agentes</h1>
+  <div class="meta"><span id="conexion" class="estado-conexion">conectando…</span></div>
+  <div class="filtros">
+    <select id="f-proyecto" aria-label="Proyecto"><option value="">Todos los proyectos</option></select>
+    <select id="f-maquina" aria-label="Máquina"><option value="">Todas las máquinas</option></select>
+  </div>
+  <div id="seleccion"></div>
+  <h2>Trabajando ahora</h2><ul id="activas"></ul>
+  <h2>Terminadas (última hora)</h2><ul id="recientes"></ul>
+  <h2>GitHub</h2><div class="meta" id="gh-meta"></div><ul id="github"></ul>
+</aside>
+<button id="alternar" type="button">Panel</button>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+// ------------------------------------------------------------------ planta
+const FASES = [
+  { id: "00", nombre: "Orquestación",  color: 0x8957e5, agentes: ["tech-lead", "onboarding"] },
+  { id: "01", nombre: "Planificación", color: 0x4f9cf9, agentes: ["producto", "arquitecto"] },
+  { id: "02", nombre: "Construcción",  color: 0x3fb950, agentes: ["desarrollador-backend", "desarrollador-frontend", "infraestructura", "cicd", "github"] },
+  { id: "03", nombre: "Validación",    color: 0xd29922, agentes: ["qa", "revisor", "seguridad"] },
+  { id: "04", nombre: "Operación",     color: 0xdb6d28, agentes: ["observabilidad", "costos", "documentacion"] },
+  { id: "xx", nombre: "Apoyo",         color: 0x6e7681, agentes: ["apoyo"] },
+];
+const PASO_X = 9, PASO_Z = 6;
+
+const contenedor = document.getElementById("escena");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+contenedor.appendChild(renderer.domElement);
+const escena = new THREE.Scene();
+escena.background = new THREE.Color(0x0f1216);
+escena.fog = new THREE.Fog(0x0f1216, 60, 120);
+const camara = new THREE.PerspectiveCamera(45, 1, 0.1, 300);
+camara.position.set(27, 30, 40);
+const controles = new OrbitControls(camara, renderer.domElement);
+controles.target.set(27, 0, 9);
+controles.maxPolarAngle = Math.PI * 0.47;
+controles.enableDamping = true;
+
+escena.add(new THREE.HemisphereLight(0xcfd8e6, 0x20242b, 0.9));
+const sol = new THREE.DirectionalLight(0xffffff, 1.1);
+sol.position.set(20, 40, 25);
+escena.add(sol);
+
+const piso = new THREE.Mesh(new THREE.PlaneGeometry(140, 90), new THREE.MeshStandardMaterial({ color: 0x1a1f26 }));
+piso.rotation.x = -Math.PI / 2;
+piso.position.set(22, -0.01, 10);
+escena.add(piso);
+
+function etiqueta(texto, { tam = 28, color = "#e6e9ee", fondo = "rgba(15,18,22,.85)" } = {}) {
+  const lienzo = document.createElement("canvas");
+  const ctx = lienzo.getContext("2d");
+  ctx.font = `600 ${tam}px system-ui, sans-serif`;
+  const ancho = Math.ceil(ctx.measureText(texto).width) + 24;
+  lienzo.width = ancho; lienzo.height = tam + 16;
+  ctx.font = `600 ${tam}px system-ui, sans-serif`;
+  ctx.fillStyle = fondo; ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+  ctx.fillStyle = color; ctx.textBaseline = "middle"; ctx.fillText(texto, 12, lienzo.height / 2);
+  const tex = new THREE.CanvasTexture(lienzo);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  const escala = 0.02;
+  sprite.scale.set(lienzo.width * escala, lienzo.height * escala, 1);
+  sprite.renderOrder = 10;
+  return sprite;
+}
+
+const estaciones = {}; // agente -> {x, z, slots}
+FASES.forEach((fase, i) => {
+  const x = i * PASO_X;
+  const largo = fase.agentes.length * PASO_Z + 4.5;
+  const zona = new THREE.Mesh(new THREE.BoxGeometry(PASO_X - 1.5, 0.05, largo),
+    new THREE.MeshStandardMaterial({ color: fase.color, transparent: true, opacity: 0.18 }));
+  zona.position.set(x, 0, largo / 2 - 3.5);
+  escena.add(zona);
+  const titulo = etiqueta(fase.id === "xx" ? fase.nombre : `${fase.id} · ${fase.nombre}`, { tam: 34, color: "#ffffff", fondo: "rgba(0,0,0,0)" });
+  titulo.position.set(x, 0.6, -4.8);
+  escena.add(titulo);
+  fase.agentes.forEach((agente, j) => {
+    const z = j * PASO_Z + 1.5;
+    const mesa = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1, 1.6), new THREE.MeshStandardMaterial({ color: 0x3a414d }));
+    mesa.position.set(x, 0.5, z);
+    escena.add(mesa);
+    const tablero = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 1.6), new THREE.MeshStandardMaterial({ color: fase.color }));
+    tablero.position.set(x, 1.04, z);
+    escena.add(tablero);
+    const nombre = etiqueta(agente, { tam: 26 });
+    nombre.position.set(x, 1.5, z + 1.2);
+    escena.add(nombre);
+    estaciones[agente] = { x, z, color: fase.color };
+  });
+});
+
+// Cinta transportadora para los PRs.
+const CINTA_Z = 34, CINTA_X0 = -4, CINTA_X1 = 49;
+const cinta = new THREE.Mesh(new THREE.BoxGeometry(CINTA_X1 - CINTA_X0, 0.4, 2.2), new THREE.MeshStandardMaterial({ color: 0x2b313b }));
+cinta.position.set((CINTA_X0 + CINTA_X1) / 2, 0.2, CINTA_Z);
+escena.add(cinta);
+const tituloCinta = etiqueta("PRs abiertos", { tam: 30, fondo: "rgba(0,0,0,0)" });
+tituloCinta.position.set(CINTA_X0 + 3, 1.2, CINTA_Z + 2);
+escena.add(tituloCinta);
+
+// ------------------------------------------------------------------ utilidades
+function colorDe(texto) { // mismo texto, mismo color (máquina o repo)
+  let h = 0; for (const c of texto || "") h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return new THREE.Color().setHSL((h % 360) / 360, 0.6, 0.58);
+}
+const hex = (c) => "#" + c.getHexString();
+const nombreAgente = (a) => (a || "").startsWith("agent-platform:") ? a.slice(15) : (estaciones[a] ? a : "apoyo");
+function duracion(segundos) {
+  const m = Math.floor(segundos / 60), s = Math.floor(segundos % 60);
+  return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : m ? `${m} min ${s} s` : `${s} s`;
+}
+const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ------------------------------------------------------------------ objetos vivos
+const trabajadores = new Map(); // id tarea -> grupo
+const cajas = new Map();        // repo#pr -> mesh
+const pilas = new Map();        // repo -> grupo de issues
+const clicables = [];
+
+function crearTrabajador(t) {
+  const grupo = new THREE.Group();
+  const color = colorDe(t.maquina);
+  const material = new THREE.MeshStandardMaterial({ color, transparent: true });
+  const cuerpo = new THREE.Mesh(new THREE.CapsuleGeometry(0.38, 0.9, 4, 10), material);
+  cuerpo.position.y = 0.85;
+  const cabeza = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 12), new THREE.MeshStandardMaterial({ color: 0xf0d2b4, transparent: true }));
+  cabeza.position.y = 1.75;
+  const rotulo = etiqueta(`${t.proyecto || "?"} · ${t.maquina || "?"}`, { tam: 22 });
+  rotulo.position.y = 2.6;
+  grupo.add(cuerpo, cabeza, rotulo);
+  grupo.userData = { tipo: "tarea", datos: t, fase: Math.random() * Math.PI * 2 };
+  cuerpo.userData.raiz = grupo; cabeza.userData.raiz = grupo;
+  clicables.push(cuerpo, cabeza);
+  escena.add(grupo);
+  return grupo;
+}
+
+function quitar(obj) {
+  obj.traverse((o) => { const i = clicables.indexOf(o); if (i >= 0) clicables.splice(i, 1); });
+  escena.remove(obj);
+}
+
+function sincronizarTrabajadores(activas) {
+  const vistas = new Set();
+  const porEstacion = {};
+  for (const t of activas) {
+    vistas.add(t.id);
+    const agente = nombreAgente(t.agente);
+    let g = trabajadores.get(t.id);
+    if (!g) { g = crearTrabajador(t); trabajadores.set(t.id, g); }
+    g.userData.datos = t;
+    const slot = (porEstacion[agente] = (porEstacion[agente] ?? -1) + 1);
+    const est = estaciones[agente];
+    // Varios trabajadores en la misma estación se reparten frente a la mesa.
+    g.userData.destino = new THREE.Vector3(est.x - 1.2 + (slot % 3) * 1.2, 0, est.z - 1.5 - Math.floor(slot / 3) * 1.2);
+    if (!g.userData.colocado) { g.position.copy(g.userData.destino); g.userData.colocado = true; }
+  }
+  for (const [id, g] of trabajadores) if (!vistas.has(id)) { quitar(g); trabajadores.delete(id); }
+}
+
+function sincronizarGithub(repos) {
+  const vistasPR = new Set(), vistasRepo = new Set();
+  let i = 0;
+  for (const r of repos) {
+    if (r.error) continue;
+    vistasRepo.add(r.repo);
+    for (const pr of r.prs || []) {
+      const clave = `${r.repo}#${pr.number}`;
+      vistasPR.add(clave);
+      let caja = cajas.get(clave);
+      if (!caja) {
+        caja = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.8, 1.1),
+          new THREE.MeshStandardMaterial({ color: pr.isDraft ? 0x6e7681 : colorDe(r.repo) }));
+        caja.userData = { tipo: "pr", datos: { ...pr, repo: r.repo } };
+        clicables.push(caja); escena.add(caja); cajas.set(clave, caja);
+      }
+      caja.userData.datos = { ...pr, repo: r.repo };
+      caja.userData.offset = i++ * 2.2;
+    }
+    // Issues abiertos: una pila de cajones por repo junto a Planificación.
+    let pila = pilas.get(r.repo);
+    const n = Math.min((r.issues || []).length, 12);
+    if (!pila || pila.userData.n !== n) {
+      if (pila) quitar(pila);
+      pila = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: colorDe(r.repo) });
+      for (let k = 0; k < n; k++) {
+        const c = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.9), mat);
+        c.position.set((k % 2) * 1.0, 0.25 + Math.floor(k / 2) * 0.52, 0);
+        c.userData.raiz = pila; clicables.push(c); pila.add(c);
+      }
+      const rot = etiqueta(`${r.repo.split("/")[1]}: ${(r.issues || []).length} issues`, { tam: 20 });
+      rot.position.set(0.5, 0.6 + Math.ceil(n / 2) * 0.52 + 0.4, 0);
+      pila.add(rot);
+      pila.userData = { tipo: "issues", n };
+      escena.add(pila); pilas.set(r.repo, pila);
+    }
+    pila.userData.datos = r;
+    pila.position.set(PASO_X + 4.5, 0, 14 + (vistasRepo.size - 1) * 3);
+  }
+  for (const [k, c] of cajas) if (!vistasPR.has(k)) { quitar(c); cajas.delete(k); }
+  for (const [k, p] of pilas) if (!vistasRepo.has(k)) { quitar(p); pilas.delete(k); }
+}
+
+// ------------------------------------------------------------------ panel
+const $ = (id) => document.getElementById(id);
+let ultimo = null;
+const filtros = { proyecto: "", maquina: "" };
+$("f-proyecto").onchange = (e) => { filtros.proyecto = e.target.value; pintar(); };
+$("f-maquina").onchange = (e) => { filtros.maquina = e.target.value; pintar(); };
+$("alternar").onclick = () => $("panel").classList.toggle("oculto");
+
+function llenarSelect(sel, valores, actual, texto) {
+  const opciones = [`<option value="">${texto}</option>`, ...[...valores].sort().map((v) => `<option ${v === actual ? "selected" : ""} value="${esc(v)}">${esc(v)}</option>`)];
+  sel.innerHTML = opciones.join("");
+}
+
+function itemTarea(t, ahora) {
+  const dur = t.estado === "activa" ? duracion(ahora - t.inicio) : duracion((t.fin || ahora) - t.inicio);
+  const clase = t.estado === "perdida" ? "mal" : t.estado === "terminada" ? "ok" : "";
+  return `<li class="item clic" data-id="${esc(t.id)}">
+    <div class="fila"><span class="agente"><span class="punto" style="background:${hex(colorDe(t.maquina))}"></span>${esc(nombreAgente(t.agente) === "apoyo" ? t.agente : nombreAgente(t.agente))}</span><span class="meta ${clase}">${t.estado === "activa" ? "" : esc(t.estado) + " · "}${dur}</span></div>
+    <div>${esc(t.tarea) || '<span class="vacio">sin descripción</span>'}</div>
+    <div class="meta">${esc(t.proyecto)} · ${esc(t.maquina)}${t.usuario ? " · " + esc(t.usuario) : ""}</div></li>`;
+}
+
+function iconoRun(r) {
+  if (r.status !== "completed") return '<span class="aviso">●</span>';
+  return r.conclusion === "success" ? '<span class="ok">✔</span>' : r.conclusion === "skipped" ? '<span class="meta">–</span>' : '<span class="mal">✖</span>';
+}
+
+function pintar() {
+  if (!ultimo) return;
+  const { ahora, activas, recientes, github } = ultimo;
+  const todas = [...activas, ...recientes];
+  llenarSelect($("f-proyecto"), new Set([...todas.map((t) => t.proyecto), ...github.repos.map((r) => r.repo)].filter(Boolean)), filtros.proyecto, "Todos los proyectos");
+  llenarSelect($("f-maquina"), new Set(todas.map((t) => t.maquina).filter(Boolean)), filtros.maquina, "Todas las máquinas");
+  const pasa = (t) => (!filtros.proyecto || t.proyecto === filtros.proyecto) && (!filtros.maquina || t.maquina === filtros.maquina);
+  const act = activas.filter(pasa), rec = recientes.filter(pasa);
+  const repos = github.repos.filter((r) => !filtros.proyecto || r.repo === filtros.proyecto);
+
+  $("activas").innerHTML = act.map((t) => itemTarea(t, ahora)).join("") || '<li class="vacio">Ningún agente trabajando.</li>';
+  $("recientes").innerHTML = rec.map((t) => itemTarea(t, ahora)).join("") || '<li class="vacio">Nada en la última hora.</li>';
+  $("gh-meta").textContent = !github.habilitado ? "Consulta a GitHub desactivada." : github.error ? `Error: ${github.error}` : github.actualizado ? `Actualizado hace ${duracion(ahora - github.actualizado)}` : "Consultando…";
+  $("github").innerHTML = repos.map((r) => r.error
+    ? `<li class="item"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.repo)}</a><div class="mal meta">${esc(r.error)}</div></li>`
+    : `<li class="item"><div class="fila"><a class="agente" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.repo)}</a><span class="meta">${r.issues.length} issues · ${r.prs.length} PRs</span></div>
+       ${r.prs.slice(0, 5).map((p) => `<div class="meta"><a href="${esc(p.url)}" target="_blank" rel="noopener">#${p.number}</a> ${esc(p.title)} <span class="chip">${esc(p.headRefName)} → ${esc(p.baseRefName)}</span></div>`).join("")}
+       ${r.runs.slice(0, 4).map((x) => `<div class="meta">${iconoRun(x)} <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.workflowName)}</a> · ${esc(x.headBranch)}</div>`).join("")}
+     </li>`).join("") || `<li class="vacio">Ningún repo con el topic configurado.</li>`;
+
+  for (const li of document.querySelectorAll("li.item[data-id]")) li.onclick = () => seleccionar({ tipo: "tarea", datos: todas.find((t) => t.id === li.dataset.id) });
+
+  // En la escena, el filtro también aplica.
+  sincronizarTrabajadores(act);
+  sincronizarGithub(repos);
+}
+
+function seleccionar(sel) {
+  const d = sel?.datos; const caja = $("seleccion");
+  if (!d) { caja.innerHTML = ""; return; }
+  if (sel.tipo === "tarea") caja.innerHTML = `<div class="agente">${esc(d.agente)}</div><div>${esc(d.tarea)}</div>
+    <div class="meta">${esc(d.proyecto)} · ${esc(d.maquina)} · ${esc(d.usuario)}</div><div class="meta">Estado: ${esc(d.estado)} · desde ${new Date(d.inicio * 1000).toLocaleTimeString()}</div>`;
+  else if (sel.tipo === "pr") caja.innerHTML = `<div class="agente"><a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.repo)} #${d.number}</a></div><div>${esc(d.title)}</div>
+    <div class="meta">${esc(d.headRefName)} → ${esc(d.baseRefName)} · ${esc(d.author)}${d.isDraft ? " · borrador" : ""}</div>`;
+  else if (sel.tipo === "issues") caja.innerHTML = `<div class="agente">${esc(d.repo)} · issues abiertos</div>` +
+    d.issues.slice(0, 10).map((i) => `<div class="meta"><a href="${esc(i.url)}" target="_blank" rel="noopener">#${i.number}</a> ${esc(i.title)} ${i.labels.map((l) => `<span class="chip">${esc(l)}</span>`).join("")}</div>`).join("");
+}
+
+// Clic en la escena (sin confundirlo con arrastrar la cámara).
+const rayo = new THREE.Raycaster(), puntero = new THREE.Vector2();
+let abajo = null;
+renderer.domElement.addEventListener("pointerdown", (e) => (abajo = [e.clientX, e.clientY]));
+renderer.domElement.addEventListener("pointerup", (e) => {
+  if (!abajo || Math.hypot(e.clientX - abajo[0], e.clientY - abajo[1]) > 5) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  puntero.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  rayo.setFromCamera(puntero, camara);
+  const hit = rayo.intersectObjects(clicables, false)[0];
+  const obj = hit && (hit.object.userData.raiz || hit.object);
+  seleccionar(obj?.userData);
+  if (obj) $("panel").classList.remove("oculto");
+});
+
+// ------------------------------------------------------------------ datos
+async function consultar() {
+  try {
+    const r = await fetch("estado", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    ultimo = await r.json();
+    $("conexion").textContent = `En vivo · ${ultimo.activas.length} trabajando`;
+    $("conexion").classList.remove("caida");
+    pintar();
+  } catch {
+    $("conexion").textContent = "Sin conexión con el servidor";
+    $("conexion").classList.add("caida");
+  }
+}
+consultar();
+setInterval(consultar, 4000);
+
+// ------------------------------------------------------------------ animación
+function ajustar() {
+  const ancho = contenedor.clientWidth, alto = contenedor.clientHeight;
+  renderer.setSize(ancho, alto); camara.aspect = ancho / alto; camara.updateProjectionMatrix();
+}
+addEventListener("resize", ajustar); ajustar();
+
+const reloj = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const t = reloj.getElapsedTime(), dt = Math.min(reloj.getDelta(), 0.1);
+  for (const g of trabajadores.values()) {
+    if (g.userData.destino) g.position.lerp(g.userData.destino, 0.06);
+    const f = g.userData.fase;
+    g.children[0].position.y = 0.85 + Math.abs(Math.sin(t * 4 + f)) * 0.08; // trabaja
+    g.children[1].position.y = 1.75 + Math.abs(Math.sin(t * 4 + f)) * 0.08;
+    g.rotation.y = Math.sin(t * 1.5 + f) * 0.25;                            // detrás de la mesa, mirándola
+  }
+  const largo = CINTA_X1 - CINTA_X0 - 1;
+  for (const c of cajas.values()) {
+    const x = CINTA_X0 + 0.5 + ((t * 1.2 + c.userData.offset) % largo);
+    c.position.set(x, 0.8, CINTA_Z);
+  }
+  controles.update();
+  renderer.render(escena, camara);
+});
+</script>
+</body>
+</html>
