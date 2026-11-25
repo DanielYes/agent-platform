@@ -23,6 +23,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - `on-merge-main` abre el PR de documentación hacia la rama que recibió el merge, no siempre hacia `main`.
 - README: columna "Para qué sirve" en la tabla de agentes.
 
+### Fixed
+
+- `onboarding` tiene dos modos. **Inicial** (por defecto): genera solo lo que falta y propone en el PR lo que les falte a `AGENTS.md`, `CLAUDE.md` y `agents.yaml` existentes. **Actualización** (a pedido): edita esos archivos con cambios puntuales, sin reescribirlos ni cambiar decisiones humanas. En sesión interactiva muestra el plan antes de crear ramas.
+
 ## [0.1.0] - 2026-11-24
 
 ### Added
