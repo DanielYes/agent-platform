@@ -20,7 +20,7 @@ TODO(humano): p. ej. python -m venv .venv && source .venv/bin/activate && pip in
 TODO(humano): p. ej. ruff check .
 
 # Tests
-TODO(humano): p. ej. pytest --cov
+TODO(humano): p. ej. pytest --cov  |  npx ng test --watch=false
 
 # Tests de integración (LocalStack)
 TODO(humano): p. ej. docker compose up -d localstack && pytest -m integration
@@ -34,11 +34,21 @@ Solo lo que no es obvio al mirar el árbol de carpetas.
 
 ## Convenciones
 
-- Python TODO(humano): versión. Tipado en funciones públicas.
+- Lenguaje y versión: TODO(humano): p. ej. Python 3.12, Node 22, Angular 21.
 - Commits: Conventional Commits (`tipo(alcance): descripción`).
-- Ramas: `tipo/descripcion-corta`. Nunca se trabaja en `main`.
-- Tests: `tests/unit/` con `moto` para AWS; `tests/integration/` con LocalStack.
+- Ramas: `tipo/descripcion-corta`. Base y destino según el bloque `git` de `agents.yaml`; nunca se trabaja directo en las ramas compartidas.
+- Tests: TODO(humano): framework, ubicación y patrón (p. ej. `tests/unit/` con `moto`; `*.spec.ts` con Vitest).
 - TODO(humano): otras convenciones propias del proyecto.
+
+## Historias de usuario
+
+Opcional. Llénalo solo si el proyecto exige un formato de entregable propio; si no, `producto` usa su formato por defecto.
+
+- Plantilla: TODO(humano): ruta (no se modifica).
+- Fuentes: TODO(humano): ruta donde va la fuente editable de cada módulo.
+- Entregable final: TODO(humano): ruta y formato (p. ej. PDF).
+- Generar: TODO(humano): comando.
+- Estructura obligatoria y reglas de contenido: TODO(humano).
 
 ## Trampas conocidas
 
