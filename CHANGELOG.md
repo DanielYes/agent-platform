@@ -5,6 +5,10 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ## [Unreleased]
 
+### Fixed
+
+- `onboarding` no modifica `AGENTS.md`, `CLAUDE.md` ni `agents.yaml` existentes: genera solo lo que falta, propone en el PR lo que les falte y, en sesión interactiva, muestra el plan antes de crear ramas.
+
 ### Added
 
 - Bloque `git` en `agents.yaml` (`rama_integracion`, `rama_produccion`). Los agentes que crean ramas eligen la base y el destino del PR según la solicitud y preguntan cuando no está claro.
