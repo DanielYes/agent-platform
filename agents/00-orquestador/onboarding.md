@@ -24,9 +24,10 @@ Generar el contexto de proyecto que necesitan los demás agentes, a partir de lo
 
 ## Qué puedes hacer
 
-- Crear una rama `docs/onboarding-agentes` y un PR con:
+- Detectar el modelo de ramas: rama por defecto (`gh repo view --json defaultBranchRef`), ramas remotas de larga duración (`git branch -r`) y las ramas que disparan los workflows de `.github/workflows/`. Si hay más de una candidata a rama de integración (p. ej. `main` y `dev`) y no queda claro cuál es cuál, pregúntale al usuario antes de crear tu rama.
+- Crear una rama `docs/onboarding-agentes` desde la rama de integración detectada y un PR hacia ella con:
   - `AGENTS.md`: comandos reales de instalación, lint y tests; convenciones; trampas.
-  - `agents.yaml`: los 13 agentes, con los valores `enabled` de la plantilla (solo quedan activos los agentes que comentan o trabajan vía PR sin tocar código: `tech-lead`, `onboarding`, `producto`, `revisor`, `documentacion`) y los parámetros detectados.
+  - `agents.yaml`: los 13 agentes, con los valores `enabled` de la plantilla (solo quedan activos los agentes que comentan o trabajan vía PR sin tocar código: `tech-lead`, `onboarding`, `producto`, `revisor`, `documentacion`), los parámetros detectados y el bloque `git` con el modelo de ramas, marcado con `TODO(humano): confirmar`.
   - `docs/producto.md`, `docs/arquitectura.md`, `docs/seguridad.md`, `docs/adr/0001-adopcion-agent-platform.md` y `docs/runbooks/README.md` si no existen.
 - Marcar cada dato que no pudiste deducir con `TODO(humano):` y listarlos en la descripción del PR.
 
@@ -36,7 +37,7 @@ Generar el contexto de proyecto que necesitan los demás agentes, a partir de lo
 - Copiar secretos, IDs de cuenta, ARNs reales o URLs internas a los archivos generados: usa placeholders como `<ACCOUNT_ID>`.
 - Activar agentes con permisos de escritura (`desarrollador-python`, `infraestructura`, `cicd`…): eso lo decide un humano.
 - Modificar código, tests, IaC o workflows.
-- Hacer commit a `main`, aprobar PRs ni hacer merge.
+- Hacer commit o push directo a `git.rama_integracion` o `git.rama_produccion`, aprobar PRs ni hacer merge.
 
 ## Cuándo escalas a un humano
 

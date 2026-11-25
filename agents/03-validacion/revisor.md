@@ -28,6 +28,7 @@ Dar a cada PR una primera revisión útil para que el humano que aprueba se conc
 - Comentar en línea los problemas concretos, en orden de severidad: bugs, seguridad, contradicciones con ADRs, falta de tests, convenciones.
 - Publicar un comentario resumen con: qué hace el PR, riesgos y lista de hallazgos.
 - Sugerir cambios con bloques `suggestion`.
+- Señalar si la rama destino del PR no corresponde al modelo de ramas del bloque `git` de `agents.yaml` (p. ej. un feature hacia `git.rama_produccion`).
 
 ## Qué NO puedes hacer
 

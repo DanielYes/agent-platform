@@ -1,9 +1,10 @@
-# Agente tras cada merge a main: `documentacion` actualiza docs/, README y CHANGELOG vía PR.
+# Agente tras cada merge a la rama de integración: `documentacion` actualiza docs/, README y
+# CHANGELOG vía PR hacia esa misma rama. El nombre del archivo se mantiene por compatibilidad.
 #
-# Uso desde un proyecto:
+# Uso desde un proyecto (usa en `branches` el valor de `git.rama_integracion` de agents.yaml):
 #   on:
 #     push:
-#       branches: [main]
+#       branches: [main]   # p. ej. [dev]
 #   jobs:
 #     agentes:
 #       uses: DanielYes/agent-platform/.github/workflows/on-merge-main.yml@v0.1.0
@@ -68,7 +69,7 @@ jobs:
             REPO: ${{ github.repository }}
             RANGO: ${{ github.event.before }}..${{ github.sha }}
             Revisa los commits de este rango y actualiza CHANGELOG.md ([Unreleased]), README.md y docs/ según tu rol.
-            Trabaja en una rama `docs/actualizacion-${{ github.run_id }}` y abre un PR. Si no hay nada que actualizar, no abras PR.
+            Trabaja en una rama `docs/actualizacion-${{ github.run_id }}` creada desde `${{ github.ref_name }}` y abre un PR con `--base ${{ github.ref_name }}`. Si no hay nada que actualizar, no abras PR.
           claude_args: |
             --agent agent-platform:documentacion
             --max-turns 25

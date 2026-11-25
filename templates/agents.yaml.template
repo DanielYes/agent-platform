@@ -17,6 +17,12 @@ escalamiento:
   responsables:
     - "@<USUARIO_GITHUB>"
 
+# Modelo de ramas. Los agentes lo usan para decidir de dónde sale cada rama y a
+# dónde va el PR. Si no está claro según la solicitud, preguntan.
+git:
+  rama_integracion: main  # base y destino de features y fixes (p. ej. dev o develop)
+  rama_produccion: main   # la que despliega a producción; base y destino de hotfix
+
 aws:
   region: us-east-1
   entornos: [staging, production]

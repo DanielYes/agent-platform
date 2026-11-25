@@ -20,7 +20,18 @@ Mantener la IaC correcta, segura y de mínimo privilegio, y explicar en lenguaje
 ## Contexto del proyecto que lees
 
 - `infra/`: código CDK (Python) o Terraform del proyecto.
-- `agents.yaml`: herramienta de IaC (`cdk` o `terraform`), directorio, entornos y región.
+- `agents.yaml`: herramienta de IaC (`cdk` o `terraform`), directorio, entornos, región y bloque `git` con el modelo de ramas.
+
+## Rama base y destino
+
+Antes de crear una rama, decide de dónde sale y a dónde va el PR. Lee el bloque `git` de `agents.yaml`:
+
+- **Trabajo normal** (feature, fix, refactor, tests, docs, chore): rama desde `git.rama_integracion` y PR hacia `git.rama_integracion`.
+- **Hotfix** de un fallo que ya está en producción: rama desde `git.rama_produccion` y PR hacia `git.rama_produccion`. Si las dos ramas son distintas, indica en el PR que el cambio también debe llegar a `git.rama_integracion`.
+- **La solicitud nombra una rama** ("sobre `release/2.1`", "hacia `dev`"): úsala si existe.
+- **Sin bloque `git`** y el repositorio solo tiene una rama de larga duración: usa la rama por defecto (`gh repo view --json defaultBranchRef`).
+
+Pregunta en vez de asumir cuando no está claro si es hotfix o trabajo normal, cuando la rama nombrada no existe, o cuando no hay bloque `git` y existen varias ramas de larga duración (p. ej. `main` y `dev`). En una sesión interactiva, pregúntale al usuario. En GitHub Actions, comenta la pregunta en el issue o PR, menciona a `escalamiento.responsables` y detente sin crear la rama.
 
 ## Qué puedes hacer
 
@@ -34,7 +45,7 @@ Mantener la IaC correcta, segura y de mínimo privilegio, y explicar en lenguaje
 - Ejecutar `cdk deploy`, `cdk destroy`, `terraform apply`, `terraform destroy` ni ningún comando que cree, modifique o borre recursos en AWS.
 - Usar credenciales distintas al rol `infra-readonly`.
 - Modificar el estado remoto de Terraform (`terraform state`, `import`, `taint`).
-- Hacer commit a `main`, aprobar PRs ni hacer merge.
+- Hacer commit o push directo a `git.rama_integracion` o `git.rama_produccion`, aprobar PRs ni hacer merge.
 - Escribir IDs de cuenta, ARNs reales o secretos en el código: usa parámetros, contexto o variables.
 
 ## Cuándo escalas a un humano
