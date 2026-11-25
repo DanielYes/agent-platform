@@ -8,10 +8,18 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 ### Added
 
 - Bloque `git` en `agents.yaml` (`rama_integracion`, `rama_produccion`). Los agentes que crean ramas eligen la base y el destino del PR según la solicitud y preguntan cuando no está claro.
+- Agentes `desarrollador-frontend` y `github` (estado de repos, ramas, commits y PRs con orden explícita).
+- `tech-lead` funciona también como líder de sesión (`claude --agent agent-platform:tech-lead`): planea, delega, exige el contrato de API y consolida.
+- `producto` redacta historias de usuario y genera el entregable con la plantilla del proyecto (p. ej. PDF).
+- Soporte para workspaces con varios repositorios.
 - `onboarding` detecta el modelo de ramas del repositorio y `revisor` señala PRs con una rama destino incorrecta.
 
 ### Changed
 
+- **Incompatible:** `desarrollador-python` pasa a llamarse `desarrollador-backend` y admite Python o Node. Actualiza `agents.yaml` y cualquier invocación por nombre.
+- `qa` usa el framework de pruebas del proyecto en vez de asumir pytest, y no introduce uno nuevo sin aprobación.
+- Los agentes aceptan `CLAUDE.md` como alternativa a `AGENTS.md`.
+- `tech-lead` usa el modelo `opus`.
 - `on-merge-main` abre el PR de documentación hacia la rama que recibió el merge, no siempre hacia `main`.
 - README: columna "Para qué sirve" en la tabla de agentes.
 

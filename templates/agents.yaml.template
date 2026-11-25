@@ -48,12 +48,16 @@ agentes:
     pr_grande_archivos: 15
 
   # 02-construccion
-  desarrollador-python:
+  desarrollador-backend:
     enabled: false
     prefijo_rama: ""        # vacío = tipo/descripcion-corta
+  desarrollador-frontend:
+    enabled: false
   infraestructura:
     enabled: false
   cicd:
+    enabled: false
+  github:
     enabled: false
 
   # 03-validacion

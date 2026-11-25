@@ -9,7 +9,7 @@
     {
       "name": "agent-platform",
       "source": "./",
-      "description": "13 subagentes genéricos (orquestación, planificación, construcción, validación y operación) para proyectos en GitHub, Python y AWS.",
+      "description": "15 subagentes genéricos (orquestación, planificación, construcción, validación y operación) para proyectos en GitHub y AWS.",
       "version": "0.1.0",
       "category": "development"
     }
