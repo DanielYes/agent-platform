@@ -39,6 +39,26 @@ Si un proyecto vive en varios repos agrupados en una carpeta (workspace) que no 
 
 Para trabajar un requerimiento que cruza repos, abre la sesión con el líder: `claude --agent agent-platform:tech-lead`.
 
+Para que el líder arranque solo en cada sesión del workspace, ponlo como agente por defecto en `.claude/settings.json`:
+
+```json
+{ "agent": "agent-platform:tech-lead" }
+```
+
+### Migrar agentes locales de un proyecto
+
+Si el proyecto ya tenía subagentes propios en `.claude/agents/`, no los borres sin antes sacarles el conocimiento del proyecto. La regla es la misma de siempre: el rol genérico vive aquí y el contexto vive en el proyecto.
+
+| Lo que tenía el agente local | A dónde va |
+|---|---|
+| Rol genérico (implementar backend, probar, revisar, operar git) | Ya lo cubre un agente de la plataforma: no se copia. |
+| Repos del workspace, qué carpeta toca cada agente, reglas del equipo | `CLAUDE.md` del workspace. |
+| Comandos, framework de pruebas y trampas de un repo | `AGENTS.md` o `CLAUDE.md` de ese repo, solo si no están ya. |
+| Modelo de ramas | Bloque `git` del `agents.yaml` de cada repo. |
+| Formato propio de entregables (p. ej. historias de usuario en PDF) | Un README junto a la plantilla, enlazado desde una sección "Historias de usuario" del `CLAUDE.md`/`AGENTS.md`. |
+
+Después borra los agentes locales y cambia cualquier `"agent": "<local>"` de `.claude/settings.json` por su equivalente `agent-platform:<nombre>`. Mientras convivan, un agente local con el mismo rol compite con el de la plataforma por la delegación automática.
+
 ## Instalar el plugin en un proyecto
 
 Desde Claude Code, en el proyecto:
