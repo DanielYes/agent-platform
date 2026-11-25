@@ -1,0 +1,14 @@
+{
+  "description": "Reporta a la fábrica de agentes cuándo un agente empieza y termina. Inactivo si FABRICA_URL no está definida.",
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Agent|Task", "hooks": [ { "type": "command", "command": "[ -z \"$FABRICA_URL\" ] || python3 \"${CLAUDE_PLUGIN_ROOT}\"/hooks/reportar_fabrica.py >/dev/null 2>&1 || true", "timeout": 5 } ] }
+    ],
+    "SubagentStart": [
+      { "hooks": [ { "type": "command", "command": "[ -z \"$FABRICA_URL\" ] || python3 \"${CLAUDE_PLUGIN_ROOT}\"/hooks/reportar_fabrica.py >/dev/null 2>&1 || true", "timeout": 5 } ] }
+    ],
+    "SubagentStop": [
+      { "hooks": [ { "type": "command", "command": "[ -z \"$FABRICA_URL\" ] || python3 \"${CLAUDE_PLUGIN_ROOT}\"/hooks/reportar_fabrica.py >/dev/null 2>&1 || true", "timeout": 5 } ] }
+    ]
+  }
+}
