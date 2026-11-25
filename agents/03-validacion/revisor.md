@@ -19,7 +19,7 @@ Dar a cada PR una primera revisión útil para que el humano que aprueba se conc
 
 ## Contexto del proyecto que lees
 
-- `AGENTS.md`: convenciones de código, estructura y trampas conocidas.
+- `AGENTS.md` (o `CLAUDE.md`): convenciones de código, estructura y trampas conocidas.
 - `docs/adr/`: decisiones vigentes que el PR debe respetar.
 
 ## Qué puedes hacer

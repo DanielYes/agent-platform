@@ -1,12 +1,12 @@
 # agent-platform
 
-Plataforma central de agentes de desarrollo para proyectos en **GitHub, Python y AWS**.
+Plataforma central de agentes de desarrollo para proyectos en **GitHub y AWS**, con backend en Python o Node y frontend web. El stack, los comandos y el framework de pruebas de cada proyecto los toman los agentes de su `AGENTS.md` (o `CLAUDE.md`).
 
 **Principio:** agente = rol genérico (vive aquí) + contexto del proyecto (vive en el repositorio de cada proyecto). Este repositorio nunca contiene contexto de un proyecto concreto.
 
 Incluye:
 
-- **13 subagentes de Claude Code**, instalables como plugin desde este mismo repositorio (que también es un marketplace).
+- **15 subagentes de Claude Code**, instalables como plugin desde este mismo repositorio (que también es un marketplace).
 - **Workflows reutilizables** de GitHub Actions: CI de Python, escaneo de seguridad, despliegue a AWS con OIDC y workflows que disparan a los agentes.
 - **IaC (CDK en Python)** para el proveedor OIDC de GitHub y un rol de mínimo privilegio por agente.
 - **Plantillas** de `AGENTS.md` y `agents.yaml` para cada proyecto.
@@ -17,19 +17,27 @@ Cada agente define su propósito, cuándo se activa, qué contexto del proyecto 
 
 | Fase | Agente | Para qué sirve | Lee del proyecto | Permisos clave |
 |---|---|---|---|---|
-| 00-orquestador | `tech-lead` | Clasifica los issues abiertos y decide qué agente atiende cada uno | `agents.yaml`, issues abiertos | Asigna issues y escala; no escribe código |
+| 00-orquestador | `tech-lead` | Clasifica issues y, como agente principal de la sesión, planea, delega y consolida un requerimiento | `agents.yaml`, `AGENTS.md`, issues abiertos | Asigna y delega; no escribe código |
 | 00-orquestador | `onboarding` | Prepara un proyecto nuevo para usar la plataforma (se usa una vez) | todo el repo | Genera borradores de `AGENTS.md`, `agents.yaml` y `docs/` vía PR |
-| 01-planificacion | `producto` | Convierte ideas en issues claros, con historias de usuario y criterios de aceptación | `docs/producto.md` | Crea y refina issues con criterios de aceptación; no toca código |
+| 01-planificacion | `producto` | Convierte ideas en issues e historias de usuario con criterios de aceptación, en el formato del proyecto (p. ej. PDF) | `docs/producto.md`, sección "Historias de usuario" de `AGENTS.md` | Crea issues y documentos de historias; no toca código |
 | 01-planificacion | `arquitecto` | Toma y documenta decisiones técnicas, y evalúa alternativas | `docs/arquitectura.md`, `docs/adr/` | Escribe ADRs y revisa PRs grandes |
-| 02-construccion | `desarrollador-python` | Implementa features y fixes a partir de issues refinados | `AGENTS.md` | Trabaja en ramas; nunca en `main` |
+| 02-construccion | `desarrollador-backend` | Implementa APIs, Lambdas y lógica de negocio (Python o Node) | `AGENTS.md`, `agents.yaml` | Trabaja en ramas; acuerda el contrato de API antes de implementar |
+| 02-construccion | `desarrollador-frontend` | Implementa pantallas, componentes y servicios que consumen la API | `AGENTS.md`, `agents.yaml` | Trabaja en ramas; no consume endpoints sin contrato acordado |
 | 02-construccion | `infraestructura` | Propone cambios de IaC y explica el impacto de cada `diff`/`plan` | `infra/`, `agents.yaml` | CDK en Python o Terraform; solo plan/diff, nunca apply |
 | 02-construccion | `cicd` | Mantiene los pipelines de GitHub Actions y diagnostica sus fallos | `agents.yaml` | Mantiene workflows; producción solo con aprobación manual |
-| 03-validacion | `qa` | Escribe tests, verifica criterios de aceptación y reporta la cobertura | `AGENTS.md` | Tests con pytest, moto y LocalStack; reporta cobertura |
+| 02-construccion | `github` | Revisa el estado de uno o varios repos y prepara ramas, commits y PRs | `AGENTS.md`, `agents.yaml` | No edita archivos; commit y push solo con orden explícita |
+| 03-validacion | `qa` | Escribe y ejecuta pruebas, verifica criterios de aceptación y reporta la cobertura | `AGENTS.md` | Usa el framework del proyecto; solo toca archivos de prueba |
 | 03-validacion | `revisor` | Revisa PRs: corrección, claridad, convenciones y ADRs | `AGENTS.md`, `docs/adr/` | Comenta PRs; nunca aprueba ni hace merge |
 | 03-validacion | `seguridad` | Detecta vulnerabilidades, secretos expuestos y permisos IAM excesivos | `docs/seguridad.md` | bandit, pip-audit, detección de secretos, revisión de IAM |
 | 04-operacion | `observabilidad` | Diagnostica errores en producción a partir de logs y alarmas | `docs/runbooks/` | Analiza logs y alarmas de CloudWatch; abre issues con diagnóstico |
 | 04-operacion | `costos` | Controla el gasto de AWS frente al presupuesto y estima el costo de cada cambio | `agents.yaml` (presupuesto) | Revisa costos y estima el impacto de cambios de infra |
 | 04-operacion | `documentacion` | Mantiene la documentación al día después de cada merge | `docs/`, `README` | Actualiza docs y changelog tras cada merge |
+
+### Proyectos con varios repositorios
+
+Si un proyecto vive en varios repos agrupados en una carpeta (workspace) que no es un repo git, pon en su `CLAUDE.md` o `AGENTS.md` una tabla de repos (carpeta local, remoto y qué contiene). Los agentes la leen primero, luego el `AGENTS.md`/`CLAUDE.md` de cada repo, y operan cada repo con `git -C`. Cada repo lleva su propio `agents.yaml`, y un cambio que cruza repos son PRs separados.
+
+Para trabajar un requerimiento que cruza repos, abre la sesión con el líder: `claude --agent agent-platform:tech-lead`.
 
 ## Instalar el plugin en un proyecto
 
